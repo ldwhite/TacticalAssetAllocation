@@ -5,7 +5,7 @@ A paper was published in the SSRN electronic journal by Wouter J. Keller and Hug
 ## Mutual Information
 
 <p align="center">
-<img src = "https://raw.githubusercontent.com/ldwhite/TacticalAssetAllocation/main/Images/Tactical-Asset-Allocation.jpg" style = "width:50%" />
+<img src = "https://raw.githubusercontent.com/ldwhite/TacticalAssetAllocation/main/Images/mvmi.png" style = "width:50%" />
 </p>
 
 As we can see here, MI allows us to come out of the 2020 crash unscathed and gets us through the rest of the sample with lower volatility than had we used correlation.
