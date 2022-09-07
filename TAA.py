@@ -94,33 +94,33 @@ def gen_pfl(x, rank_x, hedge, weights, price, pfl):
 
     for i in range(len(pfl))[reallocation_period::reallocation_period]:
         
-        if x[pfl[1].iloc[i]].iloc[i] < 0:
+        if x[pfl[1].iloc[i]].iloc[i] <= 0:
             pfl['No 1'][i:] = np.floor(weights[0]*pfl['Portfolio'].iloc[i-1]/hedge.iloc[0])
         else:
             pfl['No 1'][i:] = np.floor(weights[0]*pfl['Portfolio'].iloc[i-1]/price[pfl[1].iloc[i]].iloc[i])
     
-        if x[pfl[2].iloc[i]].iloc[i] < 0:
+        if x[pfl[2].iloc[i]].iloc[i] <= 0:
             pfl['No 2'][i:] = np.floor(weights[1]*pfl['Portfolio'].iloc[i-1]/hedge.iloc[0])
         else:
             pfl['No 2'][i:] = np.floor(weights[1]*pfl['Portfolio'].iloc[i-1]/price[pfl[2].iloc[i]].iloc[i])
     
-        if x[pfl[3].iloc[i]].iloc[i] < 0:
+        if x[pfl[3].iloc[i]].iloc[i] <= 0:
             pfl['No 3'][i:] = np.floor(weights[2]*pfl['Portfolio'].iloc[i-1]/hedge.iloc[0])
         else:
             pfl['No 3'][i:] = np.floor(weights[2]*pfl['Portfolio'].iloc[i-1]/price[pfl[3].iloc[i]].iloc[i])
     
     
-        if x[pfl[1].iloc[i]].iloc[i] < 0:
+        if x[pfl[1].iloc[i]].iloc[i] <= 0:
             pfl['Val 1'][i:] = hedge.iloc[i]*pfl['No 1'].iloc[i]
         else:
             pfl['Val 1'][i:] = price[pfl[1].iloc[i]].iloc[i:]*pfl['No 1'].iloc[i]
         
-        if x[pfl[2].iloc[i]].iloc[i] < 0:
+        if x[pfl[2].iloc[i]].iloc[i] <= 0:
             pfl['Val 2'][i:] = hedge.iloc[i]*pfl['No 2'].iloc[i]
         else:
             pfl['Val 2'][i:] = price[pfl[2].iloc[i]].iloc[i:]*pfl['No 2'].iloc[i]
     
-        if x[pfl[3].iloc[i]].iloc[i] < 0:
+        if x[pfl[3].iloc[i]].iloc[i] <= 0:
             pfl['Val 3'][i:] = hedge.iloc[i]*pfl['No 3'].iloc[i]
         else:
             pfl['Val 3'][i:] = price[pfl[3].iloc[i]].iloc[i:]*pfl['No 3'].iloc[i]
