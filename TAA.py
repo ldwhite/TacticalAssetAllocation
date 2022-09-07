@@ -6,20 +6,31 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import mutual_info_score
 import math
 
+# First step after importing our required packages is setting up our data. We use the same tickers as those used in the cited paper, with the exception of 'DBC'—Deutsche Bank Commodity ETF—as the QRAAX cited in the original paper has since been liquidated.
+
 tickers = ['VTSMX', 'FDIVX', 'VEIEX', 'VFISX', 'VBMFX', 'DBC', 'VGSIX']
+
+# Next we set up our start end end times, chosen as to be a similar time window as the original paper.
 
 start = dt(2019,1,4)
 end = dt(2022,8,30)
 
+# Now we use pandas datareader to construct a DataFrame using the Adjusted Close price of each of the securities in our list of tickers.
+
 data = web.DataReader(tickers, 'yahoo', start, end)['Adj Close']
+
+# The idea behind this setup is to make it as modular as possible, such that in the future one need only change the tickers and run the code.
 
 n = data.shape[1]
 ranks = [1, 2, 3]
 weights = np.array([1/ranks[-1]]*ranks[-1])
 lookback_period = 30
 reallocation_period = 30
-
 capital = 1000
+
+# Relative Strength
+
+## Relative Strength, referred to as relative momentum in Keller & van Putten (2012), is calculated below.
 
 delta = data.diff()
 
@@ -42,14 +53,22 @@ for i in range(len(dates_r)):
 
 rank_r.columns = dates_r.copy()
 
-train = data.iloc[data.index.to_list().index(rank_r.T.index.to_list()[0]):]
+train = data.iloc[data.index.to_list().index(rank_r.T.index.to_list()[0]):] 
 
 r_pfl = pd.DataFrame(index = train.index.to_list())
 r_pfl.index.name = 'Date'
 
 for i in ranks:
     r_pfl[i] = rank_r.T[i]
-    
+
+"""    
+In order to make our lives easier going forward, we define a function gen_pfl to generate our portfolio. The variable 'x' is the variable on which the threshold is calculated, such that when that varaible is at or below 0, the portfolio goes to cash.
+The variable 'rank_x' refers to the DataFrame which has ranked the securities at any particular time t.
+'Hedge' refers to the asset that our portfolio will be replaced with once it crosses the threshold (which in this case is 'VFISX' as a cash proxy fund)
+'Price' refers to the DataFrame from which securities' prices will be determined
+'Pfl' refers to the portfolio DataFrame that this function is generatin.
+"""
+
 def gen_pfl(x, rank_x, hedge, weights, price, pfl):
     for i in ranks:
         pfl[i] = rank_x.T[i]
@@ -114,9 +133,13 @@ def gen_pfl(x, rank_x, hedge, weights, price, pfl):
         pfl['Cash'][i:] = pfl['Portfolio'].iloc[i-1] - pfl['Asset Total'][i]
         pfl['Portfolio'][i:] = pfl['Asset Total'][i:] + pfl['Cash'][i:]
         
+## Since we don't have a DataFrame to fill the 'x' slot in the gen_pfl function, we merely construct a DataFrame called 'ones' of the appropriate dimensions.
+        
 ones = pd.DataFrame(np.ones([len(r.index), len(r.columns)]), index = r.index, columns = r.columns)
 
 gen_pfl(ones, rank_r, data['VFISX'], weights, train, r_pfl)
+
+# Now we cosntruct a benchmark portfolio, which is a buy and hold strategy using the securities from above
 
 bh = pd.DataFrame(index = data.iloc[lookback_period:].index)
 cap_alloc = capital/len(tickers)
@@ -128,10 +151,7 @@ bh['Assets'] = bh.iloc[:, 0:len(tickers)].sum(axis=1)
 bh['Cash'] = capital - bh['Assets'].iloc[0]
 bh['Portfolio'] = bh['Cash'] + bh['Assets']
 
-spx = web.DataReader('^GSPC', 'yahoo', r_pfl.index.to_list()[0].to_pydatetime(), r_pfl.index.to_list()[-1].to_pydatetime())['Adj Close']
-spx = pd.DataFrame(spx*(np.floor(capital/spx.iloc[0])))
-spx['Cash'] = capital - spx['Adj Close'].iloc[0]
-spx['Portfolio'] = spx['Cash'] + spx['Adj Close']
+# Now we print and save a graph of our portfolio, compared to the benchmark.
 
 plt.figure(figsize = (12,8), dpi = 200)
 plt.plot((r_pfl['Portfolio']), label = 'Backtest')
@@ -141,9 +161,15 @@ plt.title('Relative Momentum vs Buy & Hold')
 plt.savefig('r.png')
 plt.show()
 
+# Absolute Momentum
+
+## Absolute momentum is merely the rate of change of the security over the lookback period, in this case, 30 days
+
 m = (data.diff(lookback_period))/data.shift(lookback_period)
 
 m = m.iloc[lookback_period:]
+
+# We then construct the rank DataFrame using the same technique as with Relative Strength.
 
 rank_m1 = pd.DataFrame()
 
@@ -175,6 +201,10 @@ plt.legend()
 plt.title('Relative & Absolute Momentum vs Buy & Hold')
 plt.savefig('rm.png')
 plt.show()
+
+# Momentum & Volatility
+
+## Now we use both momentum and volatility
 
 mv_weights1 = np.array([1/2, 1/2])
 
@@ -210,6 +240,16 @@ plt.legend()
 plt.title('Momentum & Volatility vs Buy & Hold')
 plt.savefig('mv.png')
 plt.show()
+
+# Momentum, Volatility, and Correlation
+
+"""
+The construction of the rolling average correlation DataFrame is a bit more involved than the others,
+this is because we have to compute the rolling correlation between each security with every other security in the basket
+and then compute the average of those correlations. To do this, we use a helper function avg_corr(x) that computes
+the average correlation of security 'x' with every other security in the basket. Then, we iterate over the list 'tickers'
+in order to create a new column for each security in the list
+"""
 
 c = pd.DataFrame()
 
@@ -266,6 +306,8 @@ plt.legend()
 plt.savefig('mvc.png')
 plt.show()
 
+# Unequal Weights
+
 u_weights = np.array([1/2, 1/3, 1/6])
 
 gen_pfl(m, rank_mvc, data['VFISX'], u_weights, train, mvc_pfl)
@@ -277,6 +319,14 @@ plt.title('Tactical Asset Allocation with Momentum, Volatility, & Correlation, U
 plt.legend()
 plt.savefig('mvc_ue.png')
 plt.show()
+
+# Mutual Information
+
+"""
+Mutual Information (MI) is unfortunately not as easy to work with in Python as correlation is, likely due to correlation's significantly greater popularity.
+Thus, before following the same technique of constructing a helper function for MI as with correlation, we create a 
+function to calculate MI itself.
+"""
 
 def calc_MI(x, y):
 
